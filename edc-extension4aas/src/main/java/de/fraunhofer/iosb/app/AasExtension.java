@@ -15,15 +15,20 @@
  */
 package de.fraunhofer.iosb.app;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Objects;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import de.fraunhofer.iosb.app.authentication.CustomAuthenticationRequestFilter;
+import de.fraunhofer.iosb.app.client.ClientEndpoint;
+import de.fraunhofer.iosb.app.client.dataTransfer.DataTransferEndpoint;
+import de.fraunhofer.iosb.app.client.dataTransfer.DataTransferObservable;
+import de.fraunhofer.iosb.app.controller.AasController;
+import de.fraunhofer.iosb.app.controller.ConfigurationController;
+import de.fraunhofer.iosb.app.controller.ResourceController;
+import de.fraunhofer.iosb.app.model.configuration.Configuration;
+import de.fraunhofer.iosb.app.model.ids.SelfDescriptionRepository;
+import de.fraunhofer.iosb.app.sync.Synchronizer;
+import okhttp3.OkHttpClient;
 import org.apache.http.client.utils.URIBuilder;
 import org.eclipse.edc.api.auth.spi.AuthenticationService;
 import org.eclipse.edc.connector.contract.spi.negotiation.ConsumerContractNegotiationManager;
@@ -41,21 +46,14 @@ import org.eclipse.edc.spi.system.ServiceExtensionContext;
 import org.eclipse.edc.spi.system.configuration.Config;
 import org.eclipse.edc.web.spi.WebService;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import de.fraunhofer.iosb.app.authentication.CustomAuthenticationRequestFilter;
-import de.fraunhofer.iosb.app.client.ClientEndpoint;
-import de.fraunhofer.iosb.app.client.dataTransfer.DataTransferEndpoint;
-import de.fraunhofer.iosb.app.client.dataTransfer.DataTransferObservable;
-import de.fraunhofer.iosb.app.controller.AasController;
-import de.fraunhofer.iosb.app.controller.ConfigurationController;
-import de.fraunhofer.iosb.app.controller.ResourceController;
-import de.fraunhofer.iosb.app.model.configuration.Configuration;
-import de.fraunhofer.iosb.app.model.ids.SelfDescriptionRepository;
-import de.fraunhofer.iosb.app.sync.Synchronizer;
-import okhttp3.OkHttpClient;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Objects;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * EDC Extension supporting usage of Asset Administration Shells.
@@ -103,7 +101,9 @@ public class AasExtension implements ServiceExtension {
         selfDescriptionRepository.registerListener(synchronizer);
 
         loadConfig(context);
+
         var configInstance = Configuration.getInstance();
+        logger.setPrefix(configInstance.getLogPrefix());
 
         // Remote AAS service URL supplied?
         if (Objects.nonNull(configInstance.getRemoteAasLocation())) {
@@ -118,7 +118,7 @@ public class AasExtension implements ServiceExtension {
 
         // Task: get all AAS service URLs, synchronize EDC and AAS
         syncExecutor.scheduleAtFixedRate(
-                () -> synchronizer.synchronize(),
+                synchronizer::synchronize,
                 1,
                 configInstance.getSyncPeriod(), TimeUnit.SECONDS);
 
@@ -185,8 +185,6 @@ public class AasExtension implements ServiceExtension {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         var config = context.getConfig();
-
-        logger.setPrefix(config.getString(SETTINGS_PREFIX + "logPrefix", "AAS Extension"));
 
         String configAsString;
         try {

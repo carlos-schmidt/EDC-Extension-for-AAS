@@ -15,13 +15,10 @@
  */
 package de.fraunhofer.iosb.app.edc;
 
-import static java.lang.String.format;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Objects;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
+import de.fraunhofer.iosb.app.Logger;
+import de.fraunhofer.iosb.app.model.configuration.Configuration;
 import org.eclipse.edc.connector.contract.spi.offer.store.ContractDefinitionStore;
 import org.eclipse.edc.connector.contract.spi.types.offer.ContractDefinition;
 import org.eclipse.edc.connector.policy.spi.PolicyDefinition;
@@ -33,16 +30,16 @@ import org.eclipse.edc.spi.asset.AssetSelectorExpression;
 import org.eclipse.edc.spi.query.Criterion;
 import org.eclipse.edc.spi.query.QuerySpec;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Objects;
 
-import de.fraunhofer.iosb.app.Logger;
-import de.fraunhofer.iosb.app.model.configuration.Configuration;
+import static java.lang.String.format;
 
 /**
  * Handle interactions with the ContractDefinitionStore, PolicyDefinitionStore.
- * Assigns EDC assets to EDC contracts.
- * 
+ * Assigns EDC assets to EDC contracts. <p>
  * There are two types of policies: AccessPolicies and ContractPolicies. Both
  * can be passed as files via the configuration. If no policies are passed,
  * USE permissions are used as default policies. For more info regarding

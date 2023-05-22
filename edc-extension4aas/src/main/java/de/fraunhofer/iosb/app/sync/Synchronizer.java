@@ -15,7 +15,16 @@
  */
 package de.fraunhofer.iosb.app.sync;
 
-import static java.lang.String.format;
+import de.fraunhofer.iosb.app.controller.AasController;
+import de.fraunhofer.iosb.app.controller.ResourceController;
+import de.fraunhofer.iosb.app.model.aas.*;
+import de.fraunhofer.iosb.app.model.ids.SelfDescription;
+import de.fraunhofer.iosb.app.model.ids.SelfDescriptionChangeListener;
+import de.fraunhofer.iosb.app.model.ids.SelfDescriptionRepository;
+import de.fraunhofer.iosb.app.util.AASUtil;
+import io.adminshell.aas.v3.dataformat.DeserializationException;
+import jakarta.ws.rs.core.MediaType;
+import org.eclipse.edc.spi.EdcException;
 
 import java.io.IOException;
 import java.net.URL;
@@ -24,21 +33,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import org.eclipse.edc.spi.EdcException;
-
-import de.fraunhofer.iosb.app.controller.AasController;
-import de.fraunhofer.iosb.app.controller.ResourceController;
-import de.fraunhofer.iosb.app.model.aas.AASElement;
-import de.fraunhofer.iosb.app.model.aas.CustomAssetAdministrationShellEnvironment;
-import de.fraunhofer.iosb.app.model.aas.CustomSubmodel;
-import de.fraunhofer.iosb.app.model.aas.CustomSubmodelElement;
-import de.fraunhofer.iosb.app.model.aas.IdsAssetElement;
-import de.fraunhofer.iosb.app.model.ids.SelfDescription;
-import de.fraunhofer.iosb.app.model.ids.SelfDescriptionChangeListener;
-import de.fraunhofer.iosb.app.model.ids.SelfDescriptionRepository;
-import de.fraunhofer.iosb.app.util.AASUtil;
-import io.adminshell.aas.v3.dataformat.DeserializationException;
-import jakarta.ws.rs.core.MediaType;
+import static java.lang.String.format;
 
 /**
  * Synchronize registered AAS services with local self descriptions and
@@ -172,7 +167,7 @@ public class Synchronizer implements SelfDescriptionChangeListener {
     private void syncSubmodelElements(Collection<CustomSubmodelElement> allElements,
             Collection<CustomSubmodelElement> allOldElements) {
         allElements.stream()
-                .filter(element -> allOldElements.contains(element))
+                .filter(allOldElements::contains)
                 .forEach(element -> {
                     var oldElement = allOldElements.stream()
                             .filter(oldElementTest -> oldElementTest.equals(element)).findFirst().orElse(element);

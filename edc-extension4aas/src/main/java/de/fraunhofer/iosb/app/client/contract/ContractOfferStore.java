@@ -15,20 +15,18 @@
  */
 package de.fraunhofer.iosb.app.client.contract;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import de.fraunhofer.iosb.app.Logger;
+import de.fraunhofer.iosb.app.model.configuration.Configuration;
+import org.eclipse.edc.connector.contract.spi.types.offer.ContractOffer;
+
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import org.eclipse.edc.connector.contract.spi.types.offer.ContractOffer;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import de.fraunhofer.iosb.app.Logger;
-import de.fraunhofer.iosb.app.model.configuration.Configuration;
 
 /**
  * Contains user added contract offers.
@@ -44,17 +42,17 @@ public class ContractOfferStore {
 
     /**
      * Get all stored offers.
-     * 
-     * @return Stored offers (non null but possibly empty)
+     *
+     * @return Stored offers (non-null but possibly empty)
      */
     public List<ContractOffer> getOffers() {
-        return offers.values().stream().collect(Collectors.toList());
+        return new ArrayList<>(offers.values());
     }
 
     /**
      * Add offers to the store.
-     * 
-     * @param newOffers Contract offers to be stored (non null)
+     *
+     * @param newOffers Contract offers to be stored (non-null)
      */
     public void putOffers(ContractOffer... newOffers) {
         Objects.requireNonNull(newOffers, "ContractOffer is null");

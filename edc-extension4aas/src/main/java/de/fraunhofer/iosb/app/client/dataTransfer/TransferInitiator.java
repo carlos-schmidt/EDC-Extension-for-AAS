@@ -15,7 +15,16 @@
  */
 package de.fraunhofer.iosb.app.client.dataTransfer;
 
-import static java.lang.String.format;
+import de.fraunhofer.iosb.app.authentication.CustomAuthenticationRequestFilter;
+import de.fraunhofer.iosb.app.client.ClientEndpoint;
+import de.fraunhofer.iosb.app.model.configuration.Configuration;
+import jakarta.ws.rs.core.MediaType;
+import org.apache.http.client.utils.URIBuilder;
+import org.eclipse.edc.connector.transfer.spi.TransferProcessManager;
+import org.eclipse.edc.connector.transfer.spi.types.DataRequest;
+import org.eclipse.edc.connector.transfer.spi.types.TransferType;
+import org.eclipse.edc.spi.EdcException;
+import org.eclipse.edc.spi.types.domain.HttpDataAddress;
 
 import java.net.URI;
 import java.net.URL;
@@ -25,17 +34,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.http.client.utils.URIBuilder;
-import org.eclipse.edc.connector.transfer.spi.TransferProcessManager;
-import org.eclipse.edc.connector.transfer.spi.types.DataRequest;
-import org.eclipse.edc.connector.transfer.spi.types.TransferType;
-import org.eclipse.edc.spi.EdcException;
-import org.eclipse.edc.spi.types.domain.HttpDataAddress;
-
-import de.fraunhofer.iosb.app.authentication.CustomAuthenticationRequestFilter;
-import de.fraunhofer.iosb.app.client.ClientEndpoint;
-import de.fraunhofer.iosb.app.model.configuration.Configuration;
-import jakarta.ws.rs.core.MediaType;
+import static java.lang.String.format;
 
 /**
  * Initiate transfer requests
@@ -57,7 +56,7 @@ public class TransferInitiator {
      * @param transferProcessManager                  Initiating a transfer process
      *                                                as a consumer.
      * @param observable                              Status updates for waiting
-     *                                                data transfer requestors to
+     *                                                data transfer requesters to
      *                                                avoid busy waiting.
      * @param dataEndpointAuthenticationRequestFilter Creating and passing through
      *                                                custom api keys for each data
@@ -76,14 +75,13 @@ public class TransferInitiator {
 
     /**
      * Initiates the transfer process defined by the arguments. The data of the
-     * transfer will be sent to {@link ClientEndpoint#RECEIVE_DATA_PATH}.
-     * 
+     * transfer will be sent to this extension.
+     *
      * @param providerUrl The provider from whom the data is to be fetched.
      * @param agreementId Non-null ContractAgreement of the negotiation process.
      * @param assetId     The asset to be fetched.
-     * 
      * @return A completable future whose result will be the data or an error
-     *         message.
+     * message.
      */
     public CompletableFuture<String> initiateTransferProcess(URL providerUrl, String agreementId, String assetId) {
         var apiKey = UUID.randomUUID().toString();
@@ -101,14 +99,14 @@ public class TransferInitiator {
 
     /**
      * Initiates the transfer process defined by the arguments. The data of the
-     * transfer will be sent to {@link ClientEndpoint#RECEIVE_DATA_PATH}.
-     * 
+     * transfer will be sent to the address defined in dataSinkAddress.
+     *
      * @param providerUrl     The provider from whom the data is to be fetched.
      * @param agreementId     Non-null ContractAgreement of the negotiation process.
      * @param assetId         The asset to be fetched.
      * @param dataSinkAddress HTTPDataAddress the result of the transfer should be
      *                        sent to.
-     * 
+     *
      * @return A completable future whose result will be the data or an error
      *         message.
      */

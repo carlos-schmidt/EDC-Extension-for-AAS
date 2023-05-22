@@ -15,13 +15,13 @@
  */
 package de.fraunhofer.iosb.app.client.dataTransfer;
 
-import static java.lang.String.format;
+import de.fraunhofer.iosb.app.Logger;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import de.fraunhofer.iosb.app.Logger;
+import static java.lang.String.format;
 
 /**
  * Gets notified about incoming data by a provider connector.
@@ -38,9 +38,9 @@ public class DataTransferObservable {
 
     /**
      * Register a future that should complete if a data transfer is finished.
-     * 
+     *
      * @param observer    The future to complete if data transfer is finished.
-     * @param agreementId The agrement ID this future is dependent on.
+     * @param agreementId The agreement ID this future is dependent on.
      */
     public void register(CompletableFuture<String> observer, String agreementId) {
         observers.put(agreementId, observer);

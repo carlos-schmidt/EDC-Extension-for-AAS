@@ -2,7 +2,7 @@
  * Copyright (c) 2021 Fraunhofer IOSB, eine rechtlich nicht selbstaendige
  * Einrichtung der Fraunhofer-Gesellschaft zur Foerderung der angewandten
  * Forschung e.V.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,7 +37,11 @@ public final class Transformer {
         var statusCode = response.code();
         String body;
         try {
-            body = response.body().string();
+            if (response.body() != null) {
+                body = response.body().string();
+            } else {
+                return Response.serverError().build();
+            }
         } catch (IOException e) {
             LOGGER.error("Failed transforming HTTP Response", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();

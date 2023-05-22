@@ -15,14 +15,8 @@
  */
 package de.fraunhofer.iosb.app.client.contract;
 
-import static java.lang.String.format;
-
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-
+import de.fraunhofer.iosb.app.client.exception.AmbiguousOrNullException;
+import de.fraunhofer.iosb.app.model.configuration.Configuration;
 import org.eclipse.edc.catalog.spi.Catalog;
 import org.eclipse.edc.connector.contract.spi.types.offer.ContractOffer;
 import org.eclipse.edc.connector.spi.catalog.CatalogService;
@@ -30,8 +24,13 @@ import org.eclipse.edc.policy.model.Rule;
 import org.eclipse.edc.spi.EdcException;
 import org.eclipse.edc.spi.query.QuerySpec;
 
-import de.fraunhofer.iosb.app.client.exception.AmbiguousOrNullException;
-import de.fraunhofer.iosb.app.model.configuration.Configuration;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+
+import static java.lang.String.format;
 
 /**
  * Finds out contract offer for a given asset id and provider EDC url
@@ -89,17 +88,15 @@ public class ContractOfferService {
         // filter locally
         catalog.getContractOffers().removeIf(contractOffer -> !assetId.equals(contractOffer.getAsset().getId()));
 
-        var contractOffers = catalog.getContractOffers();
-
-        return contractOffers;
+        return catalog.getContractOffers();
     }
 
     /**
-     * Adds an accepted contractOFfer to match when checking a provider
+     * Adds an accepted contractOffer to match when checking a provider
      * contractOffer. Only the policies' rules are relevant.
-     * 
-     * @param contractOffer A contract offer whose policies' rules are acceptable
-     *                      for an automated contract negotiation
+     *
+     * @param contractOffers Contract offers whose policies' rules are acceptable
+     *                       for an automated contract negotiation
      */
     public void addAccepted(ContractOffer[] contractOffers) {
         contractOfferStore.putOffers(contractOffers);
@@ -115,8 +112,8 @@ public class ContractOfferService {
 
     /**
      * Removes an accepted contractOffer.
-     * 
-     * @param contractOfferID Contract offer id of contract offer to be removed
+     *
+     * @param contractOfferId Contract offer id of contract offer to be removed
      */
     public void removeAccepted(String contractOfferId) {
         contractOfferStore.removeOffer(contractOfferId);
@@ -124,8 +121,8 @@ public class ContractOfferService {
 
     /**
      * Updates an accepted contractOffer.
-     * 
-     * @param contractOfferID Contract offer id of contract offer to be updated
+     *
+     * @param contractOfferId Contract offer id of contract offer to be updated
      * @param contractOffer Updated ContractOffer
      */
     public void updateAccepted(String contractOfferId, ContractOffer contractOffer) {
@@ -134,14 +131,14 @@ public class ContractOfferService {
 
     /**
      * Return contract offers for assetId that match any contractOffers' policy of
-     * this Services' ContractOfferStore instance containing user added contract
+     * the services' ContractOfferStore instance containing user added contract
      * offers. If more than one contractOffers are provided by the provider
      * connector, an AmbiguousOrNullException will be thrown.
-     * 
+     *
      * @param providerUrl Provider of the asset.
      * @param assetId     Asset ID of the asset whose contract should be fetched.
      * @return One contractOffer offered by the provider for the given assetId.
-     * @throws InterruptedException
+     * @throws InterruptedException If more than one contractOffers are provided by the provider connector
      */
     public ContractOffer getAcceptableContractForAssetId(URL providerUrl, String assetId)
             throws InterruptedException {
@@ -163,23 +160,22 @@ public class ContractOfferService {
     }
 
     private boolean matchesOwnContractOffers(ContractOffer contractOffer) {
-        return contractOfferStore.getOffers().stream()
-                .filter(acceptedOffer -> contractOfferRulesEquality(acceptedOffer, contractOffer)).count() > 0;
+        return contractOfferStore.getOffers().stream().anyMatch(acceptedOffer -> contractOfferRulesEquality(acceptedOffer, contractOffer));
     }
 
     private boolean contractOfferRulesEquality(ContractOffer first, ContractOffer second) {
         List<Rule> firstRules = new ArrayList<>();
-        firstRules.addAll(first.getPolicy().getPermissions());
+        firstRules.addAll(Objects.requireNonNull(first.getPolicy()).getPermissions());
         firstRules.addAll(first.getPolicy().getProhibitions());
         firstRules.addAll(first.getPolicy().getObligations());
 
         List<Rule> secondRules = new ArrayList<>();
-        secondRules.addAll(second.getPolicy().getPermissions());
+        secondRules.addAll(Objects.requireNonNull(second.getPolicy()).getPermissions());
         secondRules.addAll(second.getPolicy().getProhibitions());
         secondRules.addAll(second.getPolicy().getObligations());
 
-        return firstRules.stream().filter(firstRule -> secondRules.stream()
-                .anyMatch(secondRule -> !ruleEquality(firstRule, secondRule))).count() > 0;
+        return firstRules.stream().anyMatch(firstRule -> secondRules.stream()
+                .anyMatch(secondRule -> !ruleEquality(firstRule, secondRule)));
     }
 
     private <T extends Rule> boolean ruleEquality(T first, T second) {

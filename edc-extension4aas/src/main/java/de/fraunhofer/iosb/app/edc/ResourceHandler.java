@@ -43,7 +43,7 @@ public class ResourceHandler {
         var assetId = createAssetId(sourceUrl);
         var dataAddress = HttpDataAddress.Builder.newInstance().baseUrl(sourceUrl).build();
         var asset = Asset.Builder.newInstance()
-                .id(assetId.toString())
+                .id(assetId)
                 .name(name)
                 .contentType(contentType)
                 .version(version).build();

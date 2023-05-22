@@ -15,30 +15,23 @@
  */
 package de.fraunhofer.iosb.app;
 
-import static java.lang.String.format;
-
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.InvalidPathException;
-import java.util.Objects;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import de.fraunhofer.iosb.app.controller.AasController;
 import de.fraunhofer.iosb.app.controller.ConfigurationController;
 import de.fraunhofer.iosb.app.model.ids.SelfDescriptionRepository;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.Response.Status.Family;
+
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.InvalidPathException;
+import java.util.Map;
+import java.util.Objects;
+
+import static java.lang.String.format;
 
 /**
  * Delegates (HTTP) Requests to controllers.
@@ -66,7 +59,6 @@ public class Endpoint {
      * 
      * @param selfDescriptionRepository Manage self descriptions
      * @param aasController             Communication with AAS services
-     * @param resourceController        Communication with EDC
      */
     public Endpoint(SelfDescriptionRepository selfDescriptionRepository, AasController aasController) {
         this.selfDescriptionRepository = Objects.requireNonNull(selfDescriptionRepository);
@@ -212,8 +204,8 @@ public class Endpoint {
     /**
      * Forward DELETE request to provided host in requestUrl. If requestUrl is an
      * AAS service that is registered at this EDC, synchronize assets and self
-     * description aswell.
-     * 
+     * description as well.
+     *
      * @param requestUrl URL of AAS service to be deleted
      * @return Response status
      */
@@ -222,7 +214,7 @@ public class Endpoint {
     public Response deleteAasRequest(@QueryParam("requestUrl") URL requestUrl) {
         LOGGER.log("Received an AAS DELETE request");
         Objects.requireNonNull(requestUrl);
-        return handleAasRequest(RequestType.DELETE, requestUrl, new String());
+        return handleAasRequest(RequestType.DELETE, requestUrl, "");
     }
 
     /**
@@ -256,7 +248,7 @@ public class Endpoint {
             // Build JSON object containing all self descriptions
             var selfDescriptions = objectMapper.createArrayNode();
             selfDescriptionRepository.getAllSelfDescriptions().stream()
-                    .map(selfDescriptionEntry -> selfDescriptionEntry.getValue())
+                    .map(Map.Entry::getValue)
                     .filter(Objects::nonNull)
                     .forEach(selfDescription -> selfDescriptions.add(selfDescription.toJsonNode()));
 
@@ -267,7 +259,7 @@ public class Endpoint {
             if (Objects.nonNull(selfDescription)) {
                 return Response.ok(selfDescription.toString()).build();
             } else {
-                LOGGER.error(format("Self description with URL %s not found.", aasServiceUrl.toString()));
+                LOGGER.error(format("Self description with URL %s not found.", aasServiceUrl));
                 return Response.status(Status.NOT_FOUND).build();
             }
         }

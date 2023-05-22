@@ -16,12 +16,7 @@
 package de.fraunhofer.iosb.app.util;
 
 import de.fraunhofer.iosb.app.Logger;
-import okhttp3.HttpUrl;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 
 import java.io.IOException;
 import java.net.URL;
@@ -46,7 +41,7 @@ public class HttpRestClient {
     public Response get(URL url) throws IOException {
         logger.debug("GET " + url);
         var request = new Request.Builder()
-                .url(HttpUrl.get(url))
+                .url(Objects.requireNonNull(HttpUrl.get(url)))
                 .get()
                 .build();
         return client.newCall(request).execute();
@@ -62,7 +57,7 @@ public class HttpRestClient {
     public Response put(URL url, String payload) throws IOException {
         logger.debug("PUT " + url);
         var request = new Request.Builder()
-                .url(HttpUrl.get(url))
+                .url(Objects.requireNonNull(HttpUrl.get(url)))
                 .put(RequestBody.create(payload, MediaType.parse("application/json")))
                 .build();
         return client.newCall(request).execute();
@@ -78,7 +73,7 @@ public class HttpRestClient {
     public Response post(URL url, String payload) throws IOException {
         logger.debug("POST " + url);
         var request = new Request.Builder()
-                .url(HttpUrl.get(url))
+                .url(Objects.requireNonNull(HttpUrl.get(url)))
                 .post(RequestBody.create(payload, MediaType.parse("application/json")))
                 .build();
         return client.newCall(request).execute();
@@ -98,12 +93,12 @@ public class HttpRestClient {
         if (Objects.nonNull(payload)) {
             RequestBody requestBody = RequestBody.create(payload, MediaType.parse("application/json"));
             request = new Request.Builder()
-                    .url(HttpUrl.get(url))
+                    .url(Objects.requireNonNull(HttpUrl.get(url)))
                     .delete(requestBody)
                     .build();
         } else {
             request = new Request.Builder()
-                    .url(HttpUrl.get(url))
+                    .url(Objects.requireNonNull(HttpUrl.get(url)))
                     .delete()
                     .build();
         }

@@ -15,15 +15,7 @@
  */
 package de.fraunhofer.iosb.app.client.negotiation;
 
-import static java.lang.String.format;
-
-import java.net.URL;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-
+import de.fraunhofer.iosb.app.model.configuration.Configuration;
 import org.eclipse.edc.connector.contract.spi.negotiation.ConsumerContractNegotiationManager;
 import org.eclipse.edc.connector.contract.spi.negotiation.observe.ContractNegotiationObservable;
 import org.eclipse.edc.connector.contract.spi.negotiation.store.ContractNegotiationStore;
@@ -34,7 +26,15 @@ import org.eclipse.edc.connector.contract.spi.types.offer.ContractOffer;
 import org.eclipse.edc.spi.EdcException;
 import org.eclipse.edc.spi.query.QuerySpec;
 
-import de.fraunhofer.iosb.app.model.configuration.Configuration;
+import java.net.URL;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 /**
  * Send contract offer, negotiation status watch
@@ -52,7 +52,7 @@ public class Negotiator {
      * 
      * @param consumerNegotiationManager Initiating a negotiation as a consumer.
      * @param observable                 Status updates for waiting data transfer
-     *                                   requestors to avoid busy waiting.
+     *                                   requesters to avoid busy waiting.
      * @param contractNegotiationStore   Check for existing agreements before negotiating
      */
     public Negotiator(ConsumerContractNegotiationManager consumerNegotiationManager,
@@ -81,7 +81,7 @@ public class Negotiator {
             throws InterruptedException, ExecutionException {
         var contractOfferRequest = ContractOfferRequest.Builder.newInstance()
                 .connectorAddress(providerUrl.toString())
-                .connectorId(contractOffer.getProvider().toString())
+                .connectorId(Objects.requireNonNull(contractOffer.getProvider()).toString())
                 .contractOffer(contractOffer)
                 .protocol(PROTOCOL_IDS_MULTIPART)
                 .build();

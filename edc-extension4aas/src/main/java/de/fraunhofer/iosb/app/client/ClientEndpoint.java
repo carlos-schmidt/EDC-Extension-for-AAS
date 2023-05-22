@@ -15,13 +15,15 @@
  */
 package de.fraunhofer.iosb.app.client;
 
-import static java.lang.String.format;
-
-import java.net.URI;
-import java.net.URL;
-import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-
+import de.fraunhofer.iosb.app.Logger;
+import de.fraunhofer.iosb.app.authentication.CustomAuthenticationRequestFilter;
+import de.fraunhofer.iosb.app.client.contract.ContractOfferService;
+import de.fraunhofer.iosb.app.client.dataTransfer.DataTransferObservable;
+import de.fraunhofer.iosb.app.client.dataTransfer.TransferInitiator;
+import de.fraunhofer.iosb.app.client.negotiation.Negotiator;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.edc.connector.contract.spi.negotiation.ConsumerContractNegotiationManager;
 import org.eclipse.edc.connector.contract.spi.negotiation.observe.ContractNegotiationObservable;
 import org.eclipse.edc.connector.contract.spi.negotiation.store.ContractNegotiationStore;
@@ -31,22 +33,12 @@ import org.eclipse.edc.connector.spi.catalog.CatalogService;
 import org.eclipse.edc.connector.transfer.spi.TransferProcessManager;
 import org.eclipse.edc.spi.types.domain.HttpDataAddress;
 
-import de.fraunhofer.iosb.app.Logger;
-import de.fraunhofer.iosb.app.authentication.CustomAuthenticationRequestFilter;
-import de.fraunhofer.iosb.app.client.contract.ContractOfferService;
-import de.fraunhofer.iosb.app.client.dataTransfer.DataTransferObservable;
-import de.fraunhofer.iosb.app.client.dataTransfer.TransferInitiator;
-import de.fraunhofer.iosb.app.client.negotiation.Negotiator;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import java.net.URI;
+import java.net.URL;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+
+import static java.lang.String.format;
 
 /**
  * Automated contract negotiation
@@ -75,19 +67,19 @@ public class ClientEndpoint {
 
     /**
      * Initialize a client endpoint.
-     * 
+     *
      * @param ownUri                        Needed for providing this connector's
      *                                      address in a data transfer process.
      * @param catalogService                Fetch catalogs from a provider
      *                                      connector.
      * @param consumerNegotiationManager    Initiate a contract negotiation as a
      *                                      consumer.
-     * @param contractNegotiationStore
+     * @param contractNegotiationStore      Lookup of current negotiations
      * @param contractNegotiationObservable Listen for contract negotiation changes
      *                                      (confirmed, failed, ...).
      * @param transferProcessManager        Initiate a data transfer.
      * @param observable                    Status updates for waiting data transfer
-     *                                      requestors to avoid busy waiting.
+     *                                      requesters to avoid busy waiting.
      * @param dataEndpointAuthRequestFilter Creating and passing through custom api
      *                                      keys for each data transfer.
      */
@@ -146,9 +138,9 @@ public class ClientEndpoint {
     }
 
     /**
-     * Returns all contract offers offered by the given provider for the given
+     * Returns all contract offers that are offered by the given provider for the given
      * assetID.
-     * 
+     *
      * @param providerUrl Provider whose contracts should be fetched (non null).
      * @param assetId     Asset ID for which contractOffers should be fetched.
      * @return A list of contract offers or an error message.
@@ -268,8 +260,8 @@ public class ClientEndpoint {
 
     /**
      * Removes a contract offer from the 'accepted list'.
-     * 
-     * @param contractOffer The id of the contractOffer to remove
+     *
+     * @param contractOfferId The id of the contractOffer to remove
      * @return OK as response.
      */
     @DELETE
