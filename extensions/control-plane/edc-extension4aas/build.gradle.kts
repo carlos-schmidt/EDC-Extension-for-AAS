@@ -14,7 +14,6 @@ dependencies {
     implementation(libs.edc.data.plane.http.spi)
     implementation(libs.edc.http.lib)
     implementation(libs.edc.json.ld.spi)
-    implementation(libs.edc.util.lib)
 
     testImplementation(testFixtures(project(":extensions:common:aas-lib")))
 
