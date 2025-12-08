@@ -26,6 +26,7 @@ import static de.fraunhofer.iosb.constants.AasConstants.AAS_V30_NAMESPACE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,11 +43,20 @@ class EdcStoreHandlerTest {
     private InMemoryContractDefinitionStore contractDefinitionStore;
 
 
+    private static void assertEqualAssets(Asset asset, Asset otherAsset) {
+        // ParticipantContextId is not namespaced, i.e. cannot be verified
+        assertNotNull(otherAsset);
+        assertEquals(asset.getId(), otherAsset.getId());
+        assertEquals(asset.getDescription(), otherAsset.getDescription());
+        assertEquals(asset.getProperties(), otherAsset.getProperties());
+    }
+
+
     @BeforeEach
     void setUp() {
         assetIndex = new InMemoryAssetIndex(criterionOperatorRegistry);
         contractDefinitionStore = new InMemoryContractDefinitionStore(criterionOperatorRegistry);
-        testSubject = new EdcStoreHandler(assetIndex, contractDefinitionStore);
+        testSubject = new EdcStoreHandler(assetIndex, contractDefinitionStore, "provider");
     }
 
 
@@ -87,7 +97,7 @@ class EdcStoreHandlerTest {
         assertTrue(result.succeeded());
 
         assertEquals(2, assetIndex.countAssets(List.of()));
-        assertEquals(anotherAsset, assetIndex.findById(anotherAsset.getId()));
+        assertEqualAssets(anotherAsset, assetIndex.findById(anotherAsset.getId()));
 
         assertAdditionToContractDefinition(
                 policyBinding.accessPolicyDefinitionId(),
@@ -113,8 +123,8 @@ class EdcStoreHandlerTest {
         StoreResult<Asset> result = testSubject.update(assetUpdated);
         assertTrue(result.succeeded());
 
-        Asset assetIs = assetIndex.findById(asset.getId());
-        assertEquals(assetUpdated, assetIs);
+        Asset storedAsset = assetIndex.findById(asset.getId());
+        assertEqualAssets(assetUpdated, storedAsset);
 
         assertSingleContractDefinition(
                 policyBinding.accessPolicyDefinitionId(),
@@ -151,7 +161,8 @@ class EdcStoreHandlerTest {
         assertTrue(result.succeeded());
 
         assertEquals(1, assetIndex.countAssets(List.of()));
-        assertEquals(asset, assetIndex.findById(asset.getId()));
+        Asset storedAsset = assetIndex.findById(asset.getId());
+        assertEqualAssets(asset, storedAsset);
 
         assertSingleContractDefinition(
                 policyBinding.accessPolicyDefinitionId(),
