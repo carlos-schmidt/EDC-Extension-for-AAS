@@ -15,6 +15,9 @@
  */
 package de.fraunhofer.iosb.client.registry;
 
+import de.fraunhofer.iosb.aas.lib.auth.AuthenticationMethod;
+import de.fraunhofer.iosb.aas.lib.auth.impl.BasicAuth;
+import de.fraunhofer.iosb.aas.lib.auth.impl.BearerAuth;
 import de.fraunhofer.iosb.aas.lib.util.InetTools;
 import de.fraunhofer.iosb.client.AasServerClient;
 import de.fraunhofer.iosb.client.exception.UnauthorizedException;
@@ -24,11 +27,11 @@ import de.fraunhofer.iosb.ilt.faaast.client.exception.MethodNotAllowedException;
 import de.fraunhofer.iosb.ilt.faaast.client.exception.StatusCodeException;
 import de.fraunhofer.iosb.ilt.faaast.client.interfaces.AASRegistryInterface;
 import de.fraunhofer.iosb.ilt.faaast.client.interfaces.SubmodelRegistryInterface;
-import de.fraunhofer.iosb.ilt.faaast.client.util.HttpHelper;
 import de.fraunhofer.iosb.model.context.registry.AasRegistryContext;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultAssetAdministrationShellDescriptor;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelDescriptor;
+import org.eclipse.edc.spi.security.Vault;
 
 import java.net.ConnectException;
 import java.net.URI;
@@ -42,6 +45,7 @@ import java.util.Map;
  */
 public class AasRegistryClient implements AasServerClient {
 
+    private final Vault vault;
     // FA³ST client
     private final AASRegistryInterface aasRegistryInterface;
     private final SubmodelRegistryInterface submodelRegistryInterface;
@@ -53,24 +57,34 @@ public class AasRegistryClient implements AasServerClient {
      *
      * @param context Context holding information about communication with the AAS registry.
      */
-    public AasRegistryClient(AasRegistryContext context) {
+    public AasRegistryClient(Vault vault, AasRegistryContext context) {
+        this.vault = vault;
         this.context = context;
 
-        HttpClient.Builder httpClientBuilder = context.getAuthenticationMethod()
-                .httpClientBuilderFor();
+        var aasRegistryInterfaceBuilder = new AASRegistryInterface.Builder()
+                .endpoint(context.getUri());
+        var submodelRegistryInterfaceBuilder = new SubmodelRegistryInterface.Builder()
+                .endpoint(context.getUri());
 
-        if (context.allowSelfSigned()) {
-            httpClientBuilder.sslContext(HttpHelper.newTrustAllCertificatesClient().sslContext());
+        AuthenticationMethod authMethod = context.getAuthenticationMethod();
+
+        if (authMethod instanceof BasicAuth || authMethod instanceof BearerAuth) {
+            aasRegistryInterfaceBuilder.authenticationHeaderProvider(() -> authMethod.getValue(vault));
+            submodelRegistryInterfaceBuilder.authenticationHeaderProvider(() -> authMethod.getValue(vault));
+        }
+        else {
+            var customHttpClient = authMethod.httpClientBuilderFor(vault).version(HttpClient.Version.HTTP_1_1);
+            aasRegistryInterfaceBuilder.customHttpClientBuilder(customHttpClient);
+            submodelRegistryInterfaceBuilder.customHttpClientBuilder(customHttpClient);
         }
 
-        // Version 1.1 fixes compatibility errors
-        HttpClient httpClient = httpClientBuilder
-                .version(HttpClient.Version.HTTP_1_1)
-                .build();
+        if (context.allowSelfSigned()) {
+            aasRegistryInterfaceBuilder.useTrustAllHttpClient();
+            submodelRegistryInterfaceBuilder.useTrustAllHttpClient();
+        }
 
-        // TODO once client gets builder, revise this
-        this.aasRegistryInterface = new AASRegistryInterface(context.getUri(), httpClient);
-        this.submodelRegistryInterface = new SubmodelRegistryInterface(context.getUri(), httpClient);
+        this.aasRegistryInterface = aasRegistryInterfaceBuilder.build();
+        this.submodelRegistryInterface = submodelRegistryInterfaceBuilder.build();
     }
 
 
@@ -88,13 +102,13 @@ public class AasRegistryClient implements AasServerClient {
 
     @Override
     public boolean requiresAuthentication() {
-        return context.getAuthenticationMethod().getHeader() != null;
+        return context.getAuthenticationMethod().getHeader(vault) != null;
     }
 
 
     @Override
     public Map<String, String> getHeaders() {
-        return Map.ofEntries(context.getAuthenticationMethod().getHeader());
+        return Map.ofEntries(context.getAuthenticationMethod().getHeader(vault));
     }
 
 

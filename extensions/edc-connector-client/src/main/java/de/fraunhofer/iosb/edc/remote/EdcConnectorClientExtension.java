@@ -18,7 +18,6 @@ package de.fraunhofer.iosb.edc.remote;
 import de.fraunhofer.iosb.aas.lib.auth.AuthenticationMethod;
 import de.fraunhofer.iosb.aas.lib.auth.impl.ApiKey;
 import de.fraunhofer.iosb.aas.lib.auth.impl.NoAuth;
-import de.fraunhofer.iosb.aas.lib.auth.impl.VaultAuth;
 import de.fraunhofer.iosb.edc.remote.stores.asset.RemoteAssetIndex;
 import de.fraunhofer.iosb.edc.remote.stores.contract.RemoteContractDefinitionStore;
 import de.fraunhofer.iosb.edc.remote.stores.policy.RemotePolicyDefinitionStore;
@@ -59,6 +58,7 @@ import org.eclipse.edc.transform.transformer.edc.to.JsonObjectToQuerySpecTransfo
 import org.eclipse.edc.transform.transformer.edc.to.JsonValueToGenericTypeTransformer;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.eclipse.edc.spi.constants.CoreConstants.JSON_LD;
 
@@ -81,7 +81,7 @@ public class EdcConnectorClientExtension implements ServiceExtension {
     @Setting(description = "Remote control-plane API Key", key = CONTROL_PLANE + "auth.key", required = false)
     private String apiKey;
 
-    @Setting(description = "Remote control-plane vault secret alias for authentication", key = CONTROL_PLANE + "auth.key.alias", required = false)
+    @Setting(description = "Remote control-plane vault secret alias for authentication. Takes precedence over raw key", key = CONTROL_PLANE + "auth.key.alias", required = false)
     private String apiKeyAlias;
 
     @Inject
@@ -94,7 +94,7 @@ public class EdcConnectorClientExtension implements ServiceExtension {
     private TypeManager typeManager;
     @Inject
     private TypeTransformerRegistry typeTransformerRegistry;
-    @Inject(required = false)
+    @Inject
     private Vault vault;
 
     private Codec codec;
@@ -106,15 +106,13 @@ public class EdcConnectorClientExtension implements ServiceExtension {
         registerTransformers();
 
         codec = new Codec(typeTransformerRegistry, jsonLd);
-        if (apiKeyAlias != null && vault != null) {
-            authenticationMethod = new VaultAuth(vault, apiKeyAlias);
-        }
-        else if (apiKey != null) {
-            authenticationMethod = new ApiKey("x-api-key", apiKey);
-        }
-        else {
-            authenticationMethod = new NoAuth();
-        }
+
+        authenticationMethod =
+                Optional.ofNullable(apiKeyAlias)
+                        .map(alias -> (AuthenticationMethod) new ApiKey("x-api-key", alias))
+                        .or(() -> Optional.ofNullable(apiKey)
+                                .map(k -> (AuthenticationMethod) new ApiKey("x-api-key", k, vault)))
+                        .orElseGet(NoAuth::new);
     }
 
 
@@ -126,6 +124,7 @@ public class EdcConnectorClientExtension implements ServiceExtension {
                 .managementUri(managementUri)
                 .authenticationMethod(authenticationMethod)
                 .codec(codec)
+                .vault(vault)
                 .build();
     }
 
@@ -138,6 +137,7 @@ public class EdcConnectorClientExtension implements ServiceExtension {
                 .managementUri(managementUri)
                 .authenticationMethod(authenticationMethod)
                 .codec(codec)
+                .vault(vault)
                 .build();
     }
 
@@ -150,6 +150,7 @@ public class EdcConnectorClientExtension implements ServiceExtension {
                 .managementUri(managementUri)
                 .authenticationMethod(authenticationMethod)
                 .codec(codec)
+                .vault(vault)
                 .build();
     }
 

@@ -15,6 +15,9 @@
  */
 package de.fraunhofer.iosb.client.repository.remote.impl;
 
+import de.fraunhofer.iosb.aas.lib.auth.AuthenticationMethod;
+import de.fraunhofer.iosb.aas.lib.auth.impl.BasicAuth;
+import de.fraunhofer.iosb.aas.lib.auth.impl.BearerAuth;
 import de.fraunhofer.iosb.aas.lib.model.PolicyBinding;
 import de.fraunhofer.iosb.aas.lib.util.InetTools;
 import de.fraunhofer.iosb.client.exception.UnauthorizedException;
@@ -26,7 +29,6 @@ import de.fraunhofer.iosb.ilt.faaast.client.exception.StatusCodeException;
 import de.fraunhofer.iosb.ilt.faaast.client.interfaces.AASRepositoryInterface;
 import de.fraunhofer.iosb.ilt.faaast.client.interfaces.ConceptDescriptionRepositoryInterface;
 import de.fraunhofer.iosb.ilt.faaast.client.interfaces.SubmodelRepositoryInterface;
-import de.fraunhofer.iosb.ilt.faaast.client.util.HttpHelper;
 import de.fraunhofer.iosb.model.context.repository.remote.RemoteAasRepositoryContext;
 import org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell;
 import org.eclipse.digitaltwin.aas4j.v3.model.ConceptDescription;
@@ -34,6 +36,7 @@ import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultEnvironment;
+import org.eclipse.edc.spi.security.Vault;
 
 import java.net.ConnectException;
 import java.net.URI;
@@ -48,6 +51,7 @@ import java.util.Map;
  */
 public class RemoteAasRepositoryClient implements AasRepositoryClient {
 
+    private final Vault vault;
     // FA³ST client
     private final AASRepositoryInterface aasRepositoryInterface;
     private final SubmodelRepositoryInterface submodelRepositoryInterface;
@@ -63,20 +67,36 @@ public class RemoteAasRepositoryClient implements AasRepositoryClient {
      *
      * @param context The context of the AAS repository, i.e. information needed to communicate with it.
      */
-    public RemoteAasRepositoryClient(RemoteAasRepositoryContext context) {
+    public RemoteAasRepositoryClient(Vault vault, RemoteAasRepositoryContext context) {
+        this.vault = vault;
         this.context = context;
 
-        HttpClient.Builder httpClientBuilder = context.getAuthenticationMethod()
-                .httpClientBuilderFor();
+        var aasRepoInterfaceBuilder = new AASRepositoryInterface.Builder()
+                .endpoint(context.getUri());
+        var submodelRepoInterfaceBuilder = new SubmodelRepositoryInterface.Builder()
+                .endpoint(context.getUri());
+        var conceptDescriptionRepoInterfaceBuilder = new ConceptDescriptionRepositoryInterface.Builder()
+                .endpoint(context.getUri());
 
-        if (context.allowSelfSigned()) {
-            httpClientBuilder.sslContext(HttpHelper.newTrustAllCertificatesClient().sslContext());
+        AuthenticationMethod authMethod = context.getAuthenticationMethod();
+
+        if (authMethod instanceof BasicAuth || authMethod instanceof BearerAuth) {
+            aasRepoInterfaceBuilder.authenticationHeaderProvider(() -> authMethod.getValue(vault));
+            submodelRepoInterfaceBuilder.authenticationHeaderProvider(() -> authMethod.getValue(vault));
+            conceptDescriptionRepoInterfaceBuilder.authenticationHeaderProvider(() -> authMethod.getValue(vault));
+        }
+        else {
+            var customHttpClient = authMethod.httpClientBuilderFor(vault).version(HttpClient.Version.HTTP_1_1);
+            aasRepoInterfaceBuilder.customHttpClientBuilder(customHttpClient);
+            submodelRepoInterfaceBuilder.customHttpClientBuilder(customHttpClient);
+            conceptDescriptionRepoInterfaceBuilder.customHttpClientBuilder(customHttpClient);
         }
 
-        // Version 1.1 fixes compatibility errors
-        HttpClient httpClient = httpClientBuilder
-                .version(HttpClient.Version.HTTP_1_1)
-                .build();
+        if (context.allowSelfSigned()) {
+            aasRepoInterfaceBuilder.useTrustAllHttpClient();
+            submodelRepoInterfaceBuilder.useTrustAllHttpClient();
+            conceptDescriptionRepoInterfaceBuilder.useTrustAllHttpClient();
+        }
 
         if (context.isOnlySubmodels()) {
             // Disable shell and concept-description interfaces
@@ -84,9 +104,9 @@ public class RemoteAasRepositoryClient implements AasRepositoryClient {
             conceptDescriptionInterfaceActivated = false;
         }
 
-        this.aasRepositoryInterface = new AASRepositoryInterface(context.getUri(), httpClient);
-        this.submodelRepositoryInterface = new SubmodelRepositoryInterface(context.getUri(), httpClient);
-        this.conceptDescriptionRepositoryInterface = new ConceptDescriptionRepositoryInterface(context.getUri(), httpClient);
+        this.aasRepositoryInterface = aasRepoInterfaceBuilder.build();
+        this.submodelRepositoryInterface = submodelRepoInterfaceBuilder.build();
+        this.conceptDescriptionRepositoryInterface = conceptDescriptionRepoInterfaceBuilder.build();
     }
 
 
@@ -132,13 +152,13 @@ public class RemoteAasRepositoryClient implements AasRepositoryClient {
 
     @Override
     public boolean requiresAuthentication() {
-        return context.getAuthenticationMethod().getHeader() != null;
+        return context.getAuthenticationMethod().getHeader(vault) != null;
     }
 
 
     @Override
     public Map<String, String> getHeaders() {
-        return Map.ofEntries(context.getAuthenticationMethod().getHeader());
+        return Map.ofEntries(context.getAuthenticationMethod().getHeader(vault));
     }
 
 
@@ -156,6 +176,8 @@ public class RemoteAasRepositoryClient implements AasRepositoryClient {
             throw new ConnectException(e.getMessage());
         }
         else if (e instanceof StatusCodeException) {
+            throw new RuntimeException(e);
+        } else {
             throw new RuntimeException(e);
         }
     }

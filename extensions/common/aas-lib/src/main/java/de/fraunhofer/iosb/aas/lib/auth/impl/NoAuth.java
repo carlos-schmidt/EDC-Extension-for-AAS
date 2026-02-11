@@ -16,12 +16,16 @@
 package de.fraunhofer.iosb.aas.lib.auth.impl;
 
 import de.fraunhofer.iosb.aas.lib.auth.AuthenticationMethod;
+import org.eclipse.edc.spi.security.Vault;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.http.HttpClient;
 import java.util.Map;
 
 
+/**
+ * Describes unauthenticated state of resources. Returns null upon request of header.
+ */
 public class NoAuth extends AuthenticationMethod {
 
     public NoAuth() {
@@ -29,19 +33,19 @@ public class NoAuth extends AuthenticationMethod {
 
 
     @Override
-    public @Nullable Map.Entry<String, String> getHeader() {
+    public @Nullable Map.Entry<String, String> getHeader(Vault vault) {
         return null;
     }
 
 
     @Override
-    protected @Nullable String getValue() {
+    public @Nullable String getValue(Vault vault) {
         return null;
     }
 
 
     @Override
-    public HttpClient.Builder httpClientBuilderFor() {
+    public HttpClient.Builder httpClientBuilderFor(Vault vault) {
         return HttpClient.newBuilder();
     }
 }

@@ -16,42 +16,45 @@
 package de.fraunhofer.iosb.aas.lib.auth.impl;
 
 import de.fraunhofer.iosb.aas.lib.auth.AuthenticationMethod;
+import org.eclipse.edc.spi.security.Vault;
 
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.http.HttpClient;
 import java.util.Base64;
 import java.util.Objects;
+import java.util.function.Function;
 
 
 /**
  * <a href="https://datatracker.ietf.org/doc/html/rfc7617#section-2">rfc7617</a>
- * -> b64("Basic user:password")
+ * -> Basic b64(user+":"+password)
  */
 public class BasicAuth extends AuthenticationMethod {
 
     private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
 
     private final String username;
-    private final String password;
+    private final Function<Vault, String> password;
 
 
-    public BasicAuth(String username, String password) {
+    public BasicAuth(String username, String password, Vault vault) {
         this.username = Objects.requireNonNull(username);
-        this.password = Objects.requireNonNull(password);
-    }
-
-
-    protected String getValue() {
-        return "Basic %s".formatted(BASE64_ENCODER.encodeToString("%s:%s".formatted(username, password).getBytes()));
+        this.password = getResolver(vault, password);
     }
 
 
     @Override
-    public HttpClient.Builder httpClientBuilderFor() {
+    public String getValue(Vault vault) {
+        return "Basic %s".formatted(BASE64_ENCODER.encodeToString("%s:%s".formatted(username, password.apply(vault)).getBytes()));
+    }
+
+
+    @Override
+    public HttpClient.Builder httpClientBuilderFor(Vault vault) {
         return HttpClient.newBuilder().authenticator(new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(username, password.toCharArray());
+                return new PasswordAuthentication(username, getValue(vault).toCharArray());
             }
         });
     }
